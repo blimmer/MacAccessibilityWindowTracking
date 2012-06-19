@@ -24,14 +24,36 @@ void GenericObserverCallback( AXObserverRef observer, AXUIElementRef element, CF
 int main(int argc, const char * argv[])
 {
     if (!AXAPIEnabled()) {
-        printf("turn on accessibility 'enable access for assistive devices'\n");
-        return -1;
+        pid_t childPid;
+        
+        // fork and execute applescript to turn on accessibility
+        if ((childPid = fork()) == 0)
+        {
+            char command[128];
+            // applescript command to turn on accessibility option
+            sprintf(command, "%s\n\t%s\n\t%s\n\t%s\n%s",
+                    "tell application \"System Events\"",
+                    "activate",
+                    "set UI elements enabled to true",
+                    "return UI elements enabled",
+                    "end tell");
+            execlp("osascript", "osascript", "-e", command);
+        }
+        
+        // wait for result of applescript execution
+        wait(&childPid);
+        
+        if (!AXAPIEnabled()) {
+            printf("you must provide your password to the prompt to turn on accessibility\n");
+            return -1;
+        } else {
+            printf("accessibility API successfully toggled!\n");
+        }
     }
     
-    
     // gets us a list of running apps and their associated pids
-    //CFArrayRef windows = CGWindowListCopyWindowInfo(kCGWindowListOptionAll | kCGWindowListExcludeDesktopElements, kCGNullWindowID);
-    //CFRelease(windows);
+    CFArrayRef windows = CGWindowListCopyWindowInfo(kCGWindowListOptionAll | kCGWindowListExcludeDesktopElements, kCGNullWindowID);
+    CFRelease(windows);
     
     // change to the appropriate PID for the app in question
     int pid = 1215;
